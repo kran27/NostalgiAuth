@@ -1,6 +1,6 @@
-# SimpleAuth
+# NostalgiAuth
 
-Plugin for PocketMine-MP that prevents people to impersonate an account, requering registration and login when connecting.
+A fork of SimpleAuth for NostalgiaCore that prevents people impersonating other accounts by requiring registration and login when connecting.
 
 
 ## Commands
@@ -9,12 +9,12 @@ Plugin for PocketMine-MP that prevents people to impersonate an account, requeri
 * `/login <password>`
 * `/register <password>`
 * `/unregister <password>`
-* For OPs: `/simpleauth <command: help|unregister> [parameters...]`
+* For OPs: `/nostalgiauth <command: help|unregister> [parameters...]`
 
 
 ## Configuration
 
-You can modify the _SimpleAuth/config.yml_ file on the _plugins_ directory once the plugin has been run for at least one time.
+You can modify the _NostalgiAuth/config.yml_ file on the _plugins_ directory once the plugin has been run for at least one time.
 
 | Configuration | Type | Default | Description |
 | :---: | :---: | :---: | :--- |
@@ -32,18 +32,18 @@ You can modify the _SimpleAuth/config.yml_ file on the _plugins_ directory once 
 
 You can use the _login()_ method in the API to authenticate the player directly.
 
-`boolean SimpleAuthAPI::login(Player object)`
+`boolean NostalgiAuthAPI::login(Player object)`
 
 There are three _handle()_ events that you can use:
 
-* simpleauth.login
-* simpleauth.logout
-* simpleauth.register
+* nostalgiauth.login
+* nostalgiauth.logout
+* nostalgiauth.register
 
 All the events carry the original Player object
 
 More:
 
-`boolean SimpleAuthAPI::logout(Player object)`
+`boolean NostalgiAuthAPI::logout(Player object)`
 
-`object SimpleAuth SimpleAuthAPI::get()`
+`object NostalgiAuth NostalgiAuthAPI::get()`

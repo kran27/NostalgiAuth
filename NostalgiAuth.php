@@ -2,17 +2,23 @@
 
 /*
 __PocketMine Plugin__
-name=SimpleAuth
-description=Prevents people to impersonate an account, requiring registration and login when connecting.
-version=0.3.9
-author=shoghicp
-class=SimpleAuth
-apiversion=9,10,11,12
+name=NostalgiAuth
+description=Prevents people impersonating other accounts by requiring registration and login when connecting.
+version=0.4.0
+author=Kran
+class=NostalgiAuth
+apiversion=12.1
 */
 
 /*
 
-Changelog:
+NostalgiAuth Changelog:
+
+0.4.0
+* Updated for NostalgiaCore 1.1.0 Beta
+* Renamed to NostalgiAuth
+
+SimpleAuth Changelog:
 
 0.3.9
 * Updated to Alpha_1.3.12
@@ -56,13 +62,13 @@ Changelog:
 
 */
 
-class SimpleAuth implements Plugin{
+class NostalgiAuth implements Plugin{
 	private $api, $server, $config, $sessions, $lastBroadcast = 0;
 	public function __construct(ServerAPI $api, $server = false){
 		$this->api = $api;
 		$this->server = ServerAPI::request();
 		$this->sessions = array();
-		SimpleAuthAPI::set($this);
+		NostalgiAuthAPI::set($this);
 	}
 	
 	public function init(){
@@ -75,13 +81,18 @@ class SimpleAuth implements Plugin{
 			"minPasswordLength" => 6,
 			"authenticateByLastIP" => false,
 		));
-		@mkdir($this->api->plugin->configPath($this)."players/");
+		$dir = $this->api->plugin->configPath($this)."players/";
+		
+		if (!is_dir($dir)) {
+		    @mkdir($dir);
+		}
+
 		if(file_exists($this->api->plugin->configPath($this)."players.yml")){			
 			$playerFile = new Config($this->api->plugin->configPath($this)."players.yml", CONFIG_YAML, array());
-			console("[INFO] [SimpleAuth] Importing old format to new format...");
+			console("[INFO] [NostalgiAuth] Importing old format to new format...");
 			foreach($playerFile->getAll() as $k => $value){
-				@mkdir($this->api->plugin->configPath($this)."players/".$k{0}."/");
-				$d = new Config($this->api->plugin->configPath($this)."players/".$k{0}."/".$k.".yml", CONFIG_YAML, $value);
+				@mkdir($this->api->plugin->configPath($this)."players/".$k[0]."/");
+				$d = new Config($this->api->plugin->configPath($this)."players/".$k[0]."/".$k.".yml", CONFIG_YAML, $value);
 				$d->save();
 			}
 			@unlink($this->api->plugin->configPath($this)."players.yml");
@@ -99,39 +110,39 @@ class SimpleAuth implements Plugin{
 		$this->api->console->register("unregister", "<password>", array($this, "commandHandler"));		
 		$this->api->ban->cmdWhitelist("unregister");
 
-		$this->api->console->register("simpleauth", "<command> [parameters...]", array($this, "commandHandler"));
-		console("[INFO] SimpleAuth enabled!");
+		$this->api->console->register("nostalgiauth", "<command> [parameters...]", array($this, "commandHandler"));
+		console("[INFO] NostalgiAuth enabled!");
 	}
 	
 	public function getData($iusername){
 		$iusername = strtolower($iusername);
-		if(!file_exists($this->api->plugin->configPath($this)."players/".$iusername{0}."/$iusername.yml")){
+		if(!file_exists($this->api->plugin->configPath($this)."players/".$iusername[0]."/$iusername.yml")){
 			return false;
 		}
-		return new Config($this->api->plugin->configPath($this)."players/".$iusername{0}."/$iusername.yml", CONFIG_YAML, array());
+		return new Config($this->api->plugin->configPath($this)."players/".$iusername[0]."/$iusername.yml", CONFIG_YAML, array());
 	}
 	
 	public function commandHandler($cmd, $params, $issuer, $alias){
 		$output = "";
 		switch($cmd){
-			case "simpleauth":
+			case "nostalgiauth":
 				if(!isset($params[0])){
-					$output .= "Usage: /simpleauth <command> [parameters...]\n";
+					$output .= "Usage: /nostalgiauth <command> [parameters...]\n";
 					$output .= "Available commands: help, unregister\n";
 				}
 				switch(strtolower(array_shift($params))){
 					case "unregister":
 						if(($player = $this->api->player->get($params[0])) instanceof Player){						
-							@unlink($this->api->plugin->configPath($this)."players/".$player->iusername{0}."/".$player->iusername.".yml");
+							@unlink($this->api->plugin->configPath($this)."players/".$player->iusername[0]."/".$player->iusername.".yml");
 							$this->logout($player);
 						}else{
-							@unlink($this->api->plugin->configPath($this)."players/".substr(strtolower($params{0}), 0, 1)."/".strtolower($params[0]).".yml");
+							@unlink($this->api->plugin->configPath($this)."players/".substr(strtolower($params[0]), 0, 1)."/".strtolower($params[0]).".yml");
 						}
 						break;
 					case "help":
 					default:
-						$output .= "/simpleauth help: Shows this information.\n";
-						$output .= "/simpleauth unregister <player>: Removes the player from the database.\n";
+						$output .= "/nostalgiauth help: Shows this information.\n";
+						$output .= "/nostalgiauth unregister <player>: Removes the player from the database.\n";
 				}
 				break;
 			case "unregister":
@@ -145,11 +156,11 @@ class SimpleAuth implements Plugin{
 				}
 				$d = $this->getData($issuer->iusername);
 				if($d !== false and $d->get("hash") === $this->hash($issuer->iusername, implode(" ", $params))){
-					unlink($this->api->plugin->configPath($this)."players/".$issuer->iusername{0}."/".$issuer->iusername.".yml");
+					unlink($this->api->plugin->configPath($this)."players/".$issuer->iusername[0]."/".$issuer->iusername.".yml");
 					$this->logout($issuer);
-					$output .= "[SimpleAuth] Unregistered correctly.\n";
+					$output .= "[NostalgiAuth] Unregistered correctly.\n";
 				}else{
-					$output .= "[SimpleAuth] Error during authentication.\n";
+					$output .= "[NostalgiAuth] Error during authentication.\n";
 				}
 				break;
 		}
@@ -173,9 +184,9 @@ class SimpleAuth implements Plugin{
 				if($broadcast === true){
 					$d = $this->getData($this->server->clients[$CID]->iusername);
 					if($d === false){					
-						$this->server->clients[$CID]->sendChat("[SimpleAuth] You must register using /register <password>");
+						$this->server->clients[$CID]->sendChat("[NostalgiAuth] You must register using /register <password>");
 					}else{
-						$this->server->clients[$CID]->sendChat("[SimpleAuth] You must authenticate using /login <password>");
+						$this->server->clients[$CID]->sendChat("[NostalgiAuth] You must authenticate using /login <password>");
 					}
 				}
 				if($timeout !== false and ($timer + $timeout) <= time()){
@@ -208,28 +219,28 @@ class SimpleAuth implements Plugin{
 		$this->sessions[$player->CID] = true;
 		$player->blocked = false;
 		$player->entity->setHealth($player->entity->health, "generic");
-		$player->sendChat("[SimpleAuth] You've been authenticated.");
-		$this->server->handle("simpleauth.login", $player);
+		$player->sendChat("[NostalgiAuth] You've been authenticated.");
+		$this->server->handle("nostalgiauth.login", $player);
 		return true;
 	}
 	
 	public function logout(Player $player){
 		$this->sessions[$player->CID] = time();
 		$player->blocked = true;
-		$this->server->handle("simpleauth.logout", $player);
+		$this->server->handle("nostalgiauth.logout", $player);
 	}
 	
 	public function register(Player $player, $password){	
 		$d = $this->getData($player->iusername);
 		if($d === false){
-			@mkdir($this->api->plugin->configPath($this)."players/".$player->iusername{0}."/");
-			$d = new Config($this->api->plugin->configPath($this)."players/".$player->iusername{0}."/".$player->iusername.".yml", CONFIG_YAML, array());
+			@mkdir($this->api->plugin->configPath($this)."players/".$player->iusername[0]."/");
+			$d = new Config($this->api->plugin->configPath($this)."players/".$player->iusername[0]."/".$player->iusername.".yml", CONFIG_YAML, array());
 			$d->set("registerdate", time());
 			$d->set("logindate", time());
 			$d->set("lastip", $player->ip);
 			$d->set("hash", $this->hash($player->iusername, $password));
 			$d->save();
-			$this->server->handle("simpleauth.register", $player);
+			$this->server->handle("nostalgiauth.register", $player);
 			return true;
 		}
 		return false;
@@ -255,7 +266,7 @@ class SimpleAuth implements Plugin{
 				if(!isset($this->sessions[$data->CID]) or $this->sessions[$data->CID] !== true){
 					$this->sessions[$data->CID] = time();
 					$data->blocked = true;
-					$data->sendChat("[SimpleAuth] This server uses SimpleAuth to protect your account.");
+					$data->sendChat("[NostalgiAuth] This server requires authentication.");
 					if($this->config->get("allowRegister") !== false){
 						$d = $this->getData($data->iusername);
 						if($this->config->get("authenticateByLastIP") === true and ($d instanceof Config) and $d->get("lastip") == $data->ip){
@@ -263,9 +274,9 @@ class SimpleAuth implements Plugin{
 							break;
 						}
 						if($d === false){					
-							$data->sendChat("[SimpleAuth] You must register using /register <password>");
+							$data->sendChat("[NostalgiAuth] You must register using /register <password>");
 						}else{
-							$data->sendChat("[SimpleAuth] You must authenticate using /login <password>");
+							$data->sendChat("[NostalgiAuth] You must authenticate using /login <password>");
 						}
 					}
 				}
@@ -281,14 +292,14 @@ class SimpleAuth implements Plugin{
 						$this->login($data["issuer"]);
 						return true;
 					}elseif($data["cmd"] === "register" and strlen(implode(" ", $data["parameters"])) < $this->config->get("minPasswordLength")){
-						$data["issuer"]->sendChat("[SimpleAuth] Password is too short.");
+						$data["issuer"]->sendChat("[NostalgiAuth] Password is too short.");
 						return true;
 					}elseif($this->config->get("allowRegister") !== false and $data["cmd"] === "register" and $this->register($data["issuer"], implode(" ", $data["parameters"])) === true){
-						$data["issuer"]->sendChat("[SimpleAuth] You've been sucesfully registered.");
+						$data["issuer"]->sendChat("[NostalgiAuth] You've been sucesfully registered.");
 						$this->login($data["issuer"]);
 						return true;
 					}elseif($data["cmd"] === "login" or $data["cmd"] === "register"){
-						$data["issuer"]->sendChat("[SimpleAuth] Error during authentication.");
+						$data["issuer"]->sendChat("[NostalgiAuth] Error during authentication.");
 						return true;
 					}
 					return false;
@@ -320,24 +331,24 @@ class SimpleAuth implements Plugin{
 
 }
 
-class SimpleAuthAPI{
+class NostalgiAuthAPI{
 	private static $object;
-	public static function set(SimpleAuth $plugin){
-		if(SimpleAuthAPI::$object instanceof SimpleAuth){
+	public static function set(NostalgiAuth $plugin){
+		if(NostalgiAuthAPI::$object instanceof NostalgiAuth){
 			return false;
 		}
-		SimpleAuthAPI::$object = $plugin;
+		NostalgiAuthAPI::$object = $plugin;
 	}
 	
 	public static function get(){
-		return SimpleAuthAPI::$object;
+		return NostalgiAuthAPI::$object;
 	}
 	
 	public static function login(Player $player){
-		return SimpleAuthAPI::$object->login($player);
+		return NostalgiAuthAPI::$object->login($player);
 	}
 	
 	public static function logout(Player $player){
-		return SimpleAuthAPI::$object->logout($player);
+		return NostalgiAuthAPI::$object->logout($player);
 	}
 }
